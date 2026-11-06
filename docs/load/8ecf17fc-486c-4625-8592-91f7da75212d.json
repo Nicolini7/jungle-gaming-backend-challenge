@@ -1,0 +1,94 @@
+{
+  "runId": "8ecf17fc-486c-4625-8592-91f7da75212d",
+  "startedAt": "2026-11-05T22:27:32.905Z",
+  "finishedAt": "2026-11-05T22:27:34.017Z",
+  "environment": {
+    "client": {
+      "bun": "1.4.4",
+      "nodeCompatibility": "26.3.0",
+      "platform": "linux",
+      "release": "6.8.0-147-generic",
+      "architecture": "x64",
+      "availableParallelism": 2,
+      "reportedSystemMemoryBytes": 8326623232
+    },
+    "targets": [
+      "http://api1:3000",
+      "http://api2:3000",
+      "http://api3:3000"
+    ],
+    "targetConfiguration": "Isolated VPS Docker; 3 APIs each 1 CPU/192 MiB; PostgreSQL 1 CPU/384 MiB, shared_buffers 64 MB, work_mem 2 MB; client 2 CPU/1536 MiB; shared host and Docker network."
+  },
+  "methodology": {
+    "mode": "duplicates",
+    "warmup": "readiness, wallet setup and metrics collection; no measured request warmup",
+    "requestCount": 120,
+    "completed": 120,
+    "concurrency": 8,
+    "wallets": 1,
+    "maximumDurationMs": 120000,
+    "currency": "BRL",
+    "operationAmount": "0.01",
+    "percentileMethod": "nearest rank over all completed requests including errors",
+    "retriesDuringMeasurement": false,
+    "preservedFinancialTestRecords": true
+  },
+  "measured": {
+    "durationSeconds": 1.089513636,
+    "throughputRequestsPerSecond": 110.14088859003506,
+    "latencyMilliseconds": {
+      "p50": 56.39891,
+      "p95": 152.86083300000007,
+      "p99": 172.8787470000001,
+      "maximum": 206.04951200000005
+    },
+    "errorRate": 0,
+    "errors": 0,
+    "financialRejections": 0,
+    "responseFailures": 0,
+    "statusCodes": {
+      "200": 120
+    },
+    "uniqueProcessedTransactions": 1,
+    "idempotentReplays": 119,
+    "lockConflictsDelta": 0,
+    "metricsCounterResetObserved": false,
+    "outboxLagSecondsBefore": 4.71501,
+    "outboxLagSecondsAfter": 5.012873,
+    "metricsAvailable": true
+  },
+  "reconciliations": [
+    {
+      "walletId": "5a9243f7-ebd8-4f52-8b85-2d3367cdc620",
+      "storedBalance": {
+        "amount": "1.20",
+        "currency": "BRL"
+      },
+      "calculatedBalance": {
+        "amount": "1.20",
+        "currency": "BRL"
+      },
+      "difference": {
+        "amount": "0.00",
+        "currency": "BRL"
+      },
+      "consistent": true,
+      "checkedEntries": 2,
+      "expectedBalance": "1.20",
+      "expectedBalanceMatches": true
+    }
+  ],
+  "identityValidation": {
+    "logicalOperationsExpected": 1,
+    "replaysExpected": 119,
+    "passed": true
+  },
+  "limits": [
+    "Finite local experiment, not a production capacity claim.",
+    "Scheduling stops at the duration budget; in-flight requests may drain for up to 30 seconds.",
+    "Latency includes client, HTTP, authentication, locks, PostgreSQL and response overhead.",
+    "Lock-conflict counter measures recorded database errors, not time spent waiting for row locks.",
+    "Outbox lag is global to the shared database, not restricted to this run.",
+    "Exact expected balances are checked only for complete, error-free runs; ledger reconciliation always runs."
+  ]
+}

@@ -1,3 +1,5 @@
+Esta branch contém a validação ampliada: 328 testes aprovados em containers e três experimentos de carga com saldo reconciliado. A entrega principal está na release [v1.0.1](https://github.com/Nicolini7/jungle-gaming-backend-challenge/releases/tag/v1.0.1). Os testes e experimentos adicionais estão em [docs/ENHANCEMENTS.md](docs/ENHANCEMENTS.md).
+
 # Jungle Gaming - Distributed Wagering Processor
 
 Serviço financeiro distribuído em **NestJS, TypeScript estrito e Bun**, com **PostgreSQL,
@@ -7,7 +9,7 @@ Saldo, operação, ledger, inbox e outbox são confirmados em uma única transa�
 Locks por carteira e constraints persistentes mantêm correção entre instâncias. A API
 exige identidade assinada, vínculo de operador/provedor e permissões verificadas no servidor.
 
-**Validação:** 263 testes, zero falhas e 1.792 verificações em execução nativa e em containers;
+**Validação da versão principal:** 263 testes, zero falhas e 1.792 verificações em execução nativa e em containers;
 TypeScript aprovado. Os resultados e ambientes estão em [docs/VALIDATION.md](docs/VALIDATION.md).
 
 Enunciado: [docs/CHALLENGE.md](docs/CHALLENGE.md). Decisões: [ARCHITECTURE.md](ARCHITECTURE.md).

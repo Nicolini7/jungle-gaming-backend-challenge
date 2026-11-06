@@ -1,0 +1,37 @@
+# Run with: docker compose -f compose.yaml -f compose.test.yaml run --build --rm test
+services:
+  test:
+    build: .
+    image: jungle-backend-challenge:local
+    init: true
+    environment:
+      DATABASE_URL: postgresql://jungle_migrator:${POSTGRES_PASSWORD:?Run bun run setup}@postgres:5432/jungle
+      MIGRATION_DATABASE_URL: postgresql://jungle_migrator:${POSTGRES_PASSWORD:?Run bun run setup}@postgres:5432/jungle
+      APP_DATABASE_URL: postgresql://jungle_app:${PG_APP_PASSWORD:?Run bun run setup}@postgres:5432/jungle
+      SQS_ENDPOINT: http://localstack:4566
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      OIDC_ISSUER: http://localhost:18080/realms/jungle
+      OIDC_AUDIENCE: jungle-api
+      OIDC_JWKS_URI: http://keycloak:8080/realms/jungle/protocol/openid-connect/certs
+      OIDC_TOKEN_URL: http://keycloak:8080/realms/jungle/protocol/openid-connect/token
+      PROVIDER_TENANTS_JSON: '{"provider-a":"operator-a","provider-b":"operator-b","provider-c":"operator-a"}'
+      OIDC_ADMIN_A_SECRET: ${OIDC_ADMIN_A_SECRET:?Run bun run setup}
+      OIDC_PROVIDER_A_SECRET: ${OIDC_PROVIDER_A_SECRET:?Run bun run setup}
+      OIDC_ADMIN_B_SECRET: ${OIDC_ADMIN_B_SECRET:?Run bun run setup}
+      OIDC_PROVIDER_B_SECRET: ${OIDC_PROVIDER_B_SECRET:?Run bun run setup}
+      OIDC_PROVIDER_C_SECRET: ${OIDC_PROVIDER_C_SECRET:?Run bun run setup}
+      WORKERS_ENABLED: "false"
+      RUN_MIGRATIONS: "false"
+      NODE_ENV: test
+      RUN_INTEGRATION: "1"
+    command: ["bun", "run", "test:integration"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      keycloak:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+    restart: "no"

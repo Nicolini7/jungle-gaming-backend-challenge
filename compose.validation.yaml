@@ -1,0 +1,50 @@
+# Isolated validation ports and bounded memory. Never exposes the validation stack publicly.
+# docker compose -p jungle-challenge-validation -f compose.yaml -f compose.test.yaml -f compose.validation.yaml ...
+services:
+  keycloak:
+    mem_limit: 512m
+    cpus: 1.0
+  postgres:
+    command: ["postgres", "-c", "shared_buffers=64MB", "-c", "work_mem=2MB", "-c", "max_connections=100"]
+    ports: !override
+      - "127.0.0.1:55433:5432"
+    mem_limit: 384m
+    cpus: 1.0
+
+  localstack:
+    image: jungle-challenge-validation-localstack:4.7.0
+    ports: !override
+      - "127.0.0.1:14566:4566"
+    mem_limit: 768m
+    cpus: 1.0
+
+  migrate:
+    image: jungle-challenge-validation:local
+    mem_limit: 256m
+    cpus: 1.0
+
+  api1:
+    image: jungle-challenge-validation:local
+    ports: !override
+      - "127.0.0.1:3300:3000"
+    mem_limit: 192m
+    cpus: 1.0
+
+  api2:
+    image: jungle-challenge-validation:local
+    ports: !override
+      - "127.0.0.1:3301:3000"
+    mem_limit: 192m
+    cpus: 1.0
+
+  api3:
+    image: jungle-challenge-validation:local
+    ports: !override
+      - "127.0.0.1:3302:3000"
+    mem_limit: 192m
+    cpus: 1.0
+
+  test:
+    image: jungle-challenge-validation:local
+    mem_limit: 1536m
+    cpus: 2.0

@@ -1,0 +1,135 @@
+name: jungle-backend-challenge
+
+x-app: &app
+  build: .
+  image: jungle-backend-challenge:local
+  init: true
+  environment: &app-env
+    PORT: "3000"
+    HOST: 0.0.0.0
+    DATABASE_URL: postgresql://jungle_app:${PG_APP_PASSWORD:?Run bun run setup}@postgres:5432/jungle
+    SQS_ENDPOINT: http://localstack:4566
+    AWS_REGION: us-east-1
+    AWS_ACCESS_KEY_ID: test
+    AWS_SECRET_ACCESS_KEY: test
+    OIDC_ISSUER: http://localhost:18080/realms/jungle
+    OIDC_AUDIENCE: jungle-api
+    OIDC_JWKS_URI: http://keycloak:8080/realms/jungle/protocol/openid-connect/certs
+    PROVIDER_TENANTS_JSON: '{"provider-a":"operator-a","provider-b":"operator-b","provider-c":"operator-a"}'
+    WORKERS_ENABLED: "true"
+    RUN_MIGRATIONS: "false"
+    NODE_ENV: development
+  depends_on:
+    migrate:
+      condition: service_completed_successfully
+    keycloak:
+      condition: service_healthy
+    localstack:
+      condition: service_healthy
+  healthcheck:
+    test: ["CMD", "bun", "-e", "const r = await fetch('http://localhost:3000/health/ready'); process.exit(r.ok ? 0 : 1)"]
+    interval: 10s
+    timeout: 8s
+    retries: 10
+    start_period: 10s
+  stop_grace_period: 35s
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: jungle
+      POSTGRES_USER: jungle_migrator
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run bun run setup}
+      PG_APP_PASSWORD: ${PG_APP_PASSWORD:?Run bun run setup}
+      POSTGRES_HOST_AUTH_METHOD: scram-sha-256
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256 --auth-local=scram-sha-256
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres-init.sh:/docker-entrypoint-initdb.d/10-jungle-app-role.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "PGPASSWORD=\"$$POSTGRES_PASSWORD\" psql -h 127.0.0.1 -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\" -tAc 'SELECT 1' >/dev/null"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4.7
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: jungle-admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Run bun run setup}
+      KC_HOSTNAME: http://localhost:18080
+      KC_HEALTH_ENABLED: "true"
+      JAVA_OPTS_KC_HEAP: -Xms64m -Xmx256m
+      OIDC_ADMIN_A_SECRET: ${OIDC_ADMIN_A_SECRET:?Run bun run setup}
+      OIDC_PROVIDER_A_SECRET: ${OIDC_PROVIDER_A_SECRET:?Run bun run setup}
+      OIDC_ADMIN_B_SECRET: ${OIDC_ADMIN_B_SECRET:?Run bun run setup}
+      OIDC_PROVIDER_B_SECRET: ${OIDC_PROVIDER_B_SECRET:?Run bun run setup}
+      OIDC_PROVIDER_C_SECRET: ${OIDC_PROVIDER_C_SECRET:?Run bun run setup}
+    ports:
+      - "127.0.0.1:18080:8080"
+    volumes:
+      - ./.local/keycloak/jungle-realm.json:/opt/keycloak/data/import/jungle-realm.json:ro
+      - keycloak-data:/opt/keycloak/data
+    healthcheck:
+      test: ["CMD", "bash", "-ec", "exec 3<>/dev/tcp/127.0.0.1/9000; printf 'GET /health/ready HTTP/1.0\\r\\n\\r\\n' >&3; read -r status <&3; [[ \"$$status\" == *\" 200 \"* ]]"]
+      interval: 5s
+      timeout: 3s
+      retries: 45
+      start_period: 30s
+
+  localstack:
+    build:
+      context: ./docker
+      dockerfile: localstack.Dockerfile
+    image: jungle-localstack:4.7.0
+    environment:
+      SERVICES: sqs
+      AWS_DEFAULT_REGION: us-east-1
+      SQS_ENDPOINT_STRATEGY: path
+      PERSISTENCE: "1"
+      DEBUG: "0"
+    ports:
+      - "127.0.0.1:4566:4566"
+    volumes:
+      - localstack-data:/var/lib/localstack
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import json,urllib.request; r=json.load(urllib.request.urlopen('http://127.0.0.1:4566/_localstack/init/ready',timeout=2)); assert r.get('completed') and any(s.get('name') == '10-jungle-queues.sh' and s.get('state') == 'SUCCESSFUL' for s in r.get('scripts',[]))"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+
+  migrate:
+    build: .
+    image: jungle-backend-challenge:local
+    command: ["bun", "run", "src/migrate.ts"]
+    environment:
+      MIGRATION_DATABASE_URL: postgresql://jungle_migrator:${POSTGRES_PASSWORD:?Run bun run setup}@postgres:5432/jungle
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api1:
+    <<: *app
+    ports:
+      - "127.0.0.1:3000:3000"
+
+  api2:
+    <<: *app
+    ports:
+      - "127.0.0.1:3001:3000"
+
+  api3:
+    <<: *app
+    ports:
+      - "127.0.0.1:3002:3000"
+
+volumes:
+  postgres-data:
+  localstack-data:
+  keycloak-data:

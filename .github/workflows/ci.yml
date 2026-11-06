@@ -1,0 +1,51 @@
+name: Backend checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      COMPOSE_PROJECT_NAME: jungle-ci-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4.4.1
+
+      - name: Generate isolated configuration
+        run: docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/workspace" -w /workspace oven/bun:1.4.4 bun run scripts/setup.ts
+
+      - name: Validate Compose configuration
+        run: docker compose -f compose.yaml -f compose.test.yaml config --quiet
+
+      - name: Typecheck in Bun container
+        run: docker compose -f compose.yaml -f compose.test.yaml run --build --no-deps --rm test bun run typecheck
+
+      - name: Unit tests in Bun container
+        run: docker compose -f compose.yaml -f compose.test.yaml run --no-deps --rm test bun run test:unit
+
+      - name: Integration tests with PostgreSQL and LocalStack
+        run: docker compose -f compose.yaml -f compose.test.yaml run --build --rm test
+
+      - name: Collect service logs
+        if: always()
+        run: docker compose -f compose.yaml -f compose.test.yaml logs --no-color
+
+      - name: Stop services
+        if: always()
+        run: docker compose -f compose.yaml -f compose.test.yaml down --remove-orphans
